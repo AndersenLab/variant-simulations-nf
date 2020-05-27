@@ -26,10 +26,10 @@ log_summary()
 process generate_varsets {
 
     input:
-        val(var)
+        val(varset)
 
     output:
-        path("varset.tsv")
+        tuple val(varset_n), path("${varset_n}.tsv")
 
     """
     
@@ -37,35 +37,65 @@ process generate_varsets {
 
 }
 
-process generate_sites {
-
-    """
-    python bamsurgeon/addsnv.py --reference {reference} \
-                        --tmpdir ${TMPDIR} \
-                        --procs ${task.cpus} \
-                        --maxdepth 2000 \
-                        --mindepth 1 \
-                        -m 1.0 \
-                        -v ${varset} \
-                        --bamfile {config[bam_location]} \
-                        --aligner mem \
-                        --picardjar /lscr2/andersenlab/dec211/variant-caller-analysis/tools/picard.jar \
-                        --outbam {output.spiked_bam}
-    """
-
-}
-
-
-process bamsurgeon {
+process generate_snv_bams {
 
     container "lethalfang/bamsurgeon"
 
+    input:
+        tuple val(varset_n), path("varset.tsv"), path("in.bam")
+
+    output:
+        path("${varset_n}.bam")
+
+    """
+    python bamsurgeon/addsnv.py \\
+                        --reference ${reference} \
+                        --tmpdir . \\
+                        --procs ${task.cpus} \\
+                        --maxdepth 2000 \\
+                        --mindepth 1 \\
+                        -m 1.0 \\
+                        -v varset.tsv \\
+                        --bamfile in.bam \\
+                        --aligner mem \
+                        --picardjar /lscr2/andersenlab/dec211/variant-caller-analysis/tools/picard.jar \
+                        --outbam ${varset_n}.bam
+    """
+}
+
+
+
+process generate_indel_bams {
+
+    container "lethalfang/bamsurgeon"
+
+    input:
+        tuple val(varset_n), path("varset.tsv"), path("in.bam")
+
+    output:
+        path("${varset_n}.bam")
+
+    """
+    python bamsurgeon/addindel.py \\
+                        --reference ${reference} \
+                        --tmpdir . \\
+                        --procs ${task.cpus} \\
+                        --maxdepth 2000 \\
+                        --mindepth 1 \\
+                        -m 1.0 \\
+                        -v varset.tsv \\
+                        --bamfile in.bam \\
+                        --aligner mem \
+                        --picardjar /lscr2/andersenlab/dec211/variant-caller-analysis/tools/picard.jar \
+                        --outbam ${varset_n}.bam
+    """
 
 }
 
+
 workflow {
 
-    Channel.from
+    varsets = Channel.from(1..10)
 
 
 }
