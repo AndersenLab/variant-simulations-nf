@@ -1,2 +1,9 @@
 _assets/*
 .DS_Store
+report.html*
+.nextflow.log*
+.nextflow
+work/*
+release*/
+.nextflow/*
+pipeline_info/*

@@ -5,8 +5,6 @@
     - Daniel Cook <danielecook@gmail.com>
 */
 nextflow.preview.dsl=2
-params.reference = "_assets/genomes/c_elegans/PRJNA13758/WS276/c_elegans.PRJNA13758/WS276.genome.fa.gz"
-params.bamfile = "_assets/bam/N2.bam"
 
 // Params
 reference = file(params.reference, checkIfExists: true)
@@ -17,29 +15,35 @@ def log_summary() {
     out =  '''
     Variant Simulations                                           
     '''
-
 }
 
 log_summary()
 
 
-process generate_varsets {
+process gen_varset_real {
+
+    tag { "${varset}:${simulation_type}:${var_type}"}
+
+    conda "bedtools=2.29.2"
 
     input:
-        val(varset)
+        tuple val(varset), \
+              val(simulation_type), \
+              val(var_type), \
+              path(bam)
 
     output:
         tuple val(varset_n), path("${varset_n}.tsv")
 
     """
-    
+        bedtools
     """
 
 }
 
 process generate_snv_bams {
 
-    container "lethalfang/bamsurgeon"
+    conda "bamsurgeon="
 
     input:
         tuple val(varset_n), path("varset.tsv"), path("in.bam")
@@ -96,6 +100,16 @@ process generate_indel_bams {
 workflow {
 
     varsets = Channel.from(1..10)
+
+    varsets.combine(["real", "simulated"])
+           .combine(["snp", "indel"])
+           .combine([bamfile])
+           .branch {
+               real: it[1] == "real"
+               simulated: it[1] == "simulated"
+           }.set { varsets_in }
+    
+    varsets_in.real | gen_varset_real
 
 
 }

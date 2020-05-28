@@ -25,8 +25,10 @@ fi;
 PARENT_DIR=$(git rev-parse --show-toplevel)
 
 msg "Creating dirs"
-GENOMES="${PARENT_DIR}/_assets/genomes"
+VCF_DIR="${PARENT_DIR}/_assets/vcf"
 BAM_DIR="${PARENT_DIR}/_assets/bam"
+GENOMES="${PARENT_DIR}/_assets/genomes"
+mkdir -p "${VCF_DIR}"
 mkdir -p "${BAM_DIR}"
 mkdir -p "${GENOMES}"
 
@@ -36,4 +38,10 @@ rsync -rauL --progress --copy-links "quest:/projects/b1059/data/genomes/${REFERE
 
 msg "Downloading N2 Reference"
 N2_BAM="${BAM_DIR}/N2.bam"
-[ -s "$N2_BAM" ]; wget -O "${N2_BAM}" "https://s3.us-east-2.amazonaws.com/elegansvariation.org/bam/strain/N2.bam"
+[ ! -s "$N2_BAM" ]; wget -O "${N2_BAM}" "https://s3.us-east-2.amazonaws.com/elegansvariation.org/bam/strain/N2.bam"
+
+msg "Download recent WI release"
+WI_FNAME="WI.20180527.soft-filter.vcf.gz"
+WI_RELEASE="${VCF_DIR}/${WI_FNAME}"
+[ ! -s "$WI_RELEASE" ]; wget -O "${WI_RELEASE}" "https://storage.googleapis.com/elegansvariation.org/releases/20180527/variation/${WI_FNAME}"
+bcftools index ${WI_RELEASE}
