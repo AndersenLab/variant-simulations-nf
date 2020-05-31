@@ -156,7 +156,7 @@ process process_varset {
 
 process bamsurgeon_spike_snps {
 
-    container "erikwaskiewicz/bamsurgeon"
+    container "andersenlab/bamsurgeon"
 
     input:
         tuple val(varset), \
@@ -188,7 +188,7 @@ process bamsurgeon_spike_snps {
 
 process bamsurgeon_spike_indels {
 
-    container "erikwaskiewicz/bamsurgeon"
+    container "andersenlab/bamsurgeon"
 
     input:
         tuple val(varset), \
