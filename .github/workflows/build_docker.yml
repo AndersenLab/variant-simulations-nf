@@ -1,0 +1,29 @@
+# Build dockerfile on change
+name: Build Docker (env/bamsurgeon.Dockerfile)
+
+on:
+  push:
+    paths:
+    - 'env/bamsurgeon.Dockerfile'
+  pull_request:
+    paths:
+    - 'env/bamsurgeon.Dockerfile'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build and Publish
+      uses: elgohr/Publish-Docker-Github-Action@master
+      with:
+        name: andersenlab/bamsurgeon
+        tag: "${{ steps.current-time.formattedTime }}"
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        snapshot: true
+        dockerfile: bamsurgeon.Dockerfile
+        workdir: "env"
+        tags: "latest"
+        cache: true
