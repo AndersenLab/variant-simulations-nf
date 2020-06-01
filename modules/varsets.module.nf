@@ -2,6 +2,26 @@
     Varset generation and processing
 */
 
+/*
+    Varsets are output as:
+
+    SNP ~ 1-based:
+    chrom
+    start
+    end
+    vaf
+    allele (alt)
+
+    INDEL ~ 0-based:
+    chrom
+    start
+    end
+    vaf
+    INS/DEL
+    allele
+
+*/
+
 process gen_varset_real {
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
@@ -25,27 +45,28 @@ process gen_varset_real {
 
     """
             # Generate simulated variant set
-            sc sample -n ${params.n_variants} --types=${var_type} ${params.vcf_file} | \
+            sc sample -n ${params.n_variants*2} --types=${var_type} ${params.vcf_file} | \
+            bcftools filter --include '%FILTER="PASS"' | \
             bcftools sort -O z > ${varset}_${var_type}.vcf.gz
             bcftools index ${varset}_${var_type}.vcf.gz
             
             # Convert to 
             if [[ "${var_type}" == "snps" ]]; then
                 bcftools view ${varset}_${var_type}.vcf.gz | \
-                bcftools query -f "%CHROM\t%POS\t%POS\t1.0\t%ALT{0}\t%ALT{0}\n" > out.tsv
+                bcftools query -f "%CHROM\t%POS\t%POS\t1.0\t%ALT{0}\n" > out.tsv
             elif [[ "${var_type}" == "indels" ]]; then
                 {
                     # Insertions ~ VCF -> BED; 0-based; But VCF starts indels at -1
                     bcftools view ${varset}_${var_type}.vcf.gz | \\
                     vcf2bed --insertions - | \\
                     cut -f 1,2,7 | \
-                    awk '{ print \$1, \$2 + 1, \$2 + 2, "1.0", "INS", substr(\$3, 2), \$3; }'; 
+                    awk '{ print \$1, \$2 + 1, \$2 + 2, "1.0", "INS", substr(\$3, 2); }'; 
                     
                     # Deletions; Similar to above but 
                     bcftools view ${varset}_${var_type}.vcf.gz | \\
                     vcf2bed --deletions - | \\
                     cut -f 1,2,6 | \\
-                    awk '{ print \$1, \$2 + 1, \$2 + length(substr(\$3, 2)), "1.0", "DEL", substr(\$3, 2), \$3; }';
+                    awk '{ print \$1, \$2 + 1, \$2 + length(\$3), "1.0", "DEL", substr(\$3, 2); }';
                 } > out.tsv
             fi;
     """
@@ -74,18 +95,18 @@ process gen_varset_simulated {
             # This is an inefficient but easy way to do it (-;
             paste  <(sc rand -n ${params.n_variants*2} ${params.reference}) \\
                    <(sc rand -n ${params.n_variants*2} ${params.reference} | cut -f 4) | \
-            awk '\$4 != \$5 { print \$1, \$2, \$3, "1.0", \$4, \$4 }' | \\
+            awk '\$4 != \$5 { print \$1, \$2, \$3, "1.0", \$5 }' | \\
             head -n ${params.n_variants} > out.tsv
 
         elif [[ "${var_type}" == "indels" ]]; then
             # Insertions ~ Generate random seq from elsewhere in the genome to insert
             {
-                paste  <(sc rand -n ${params.n_variants/2} --dist=2-50 ${params.reference} | cut -f 1,2,4) \\
-                       <(sc rand -n ${params.n_variants/2} --dist=2-50 ${params.reference} | cut -f 4) | \\
-                    awk '{ print \$1, \$2, \$2+1, "1.0", "INS", \$4, substr(\$4,1), \$4 }';
+                paste  <(sc rand -n ${params.n_variants/2} --dist=2-30 ${params.reference} | cut -f 1,2,4) \\
+                       <(sc rand -n ${params.n_variants/2} --dist=2-30 ${params.reference} | cut -f 4) | \\
+                    awk '{ print \$1, \$2, \$2+1, "1.0", "INS", \$4 }';
                 # Deletions
-                sc rand -n ${params.n_variants/2} --dist=2-50 ${params.reference} | \
-                awk '{ print \$1, \$2, \$3 + length(substr(\$4,2)) + 1, "1.0", "DEL", substr(\$4,2), \$4; }';
+                sc rand -n ${params.n_variants/2} --dist=2-30 ${params.reference} | \
+                awk '{ print \$1, \$2, \$2 + length(\$4), "1.0", "DEL", \$4; }';
             } | sort -k 1,1 -k 2,2n - > out.tsv
         fi;
     """
@@ -118,9 +139,9 @@ process process_varset {
 
         # Add a header to varset for downstream analysis
         {
-            echo -e "CHROM\tPOS\tALT\tstart\tstop\tsnp_ins_del\tspike_sequence\tvarset\treal_or_simulated\tvar_type";
-                awk -v OFS="\t" '{ if ("${var_type}" == "snps") { col5="SNP" } else { col5=\$5 };
-                       print \$1, \$2, \$6, \$2, \$3, \$4, col5, \$5, "${varset}", "${real_or_simulated}", "${var_type}" }' varset.tsv
+            echo -e "CHROM\tPOS\tVAR\tstart\tstop\tsnp_ins_del\tspike_sequence\tvarset\treal_or_simulated\tvar_type";
+                awk -v OFS="\t" '{ if ("${var_type}" == "snps") { vargroup="SNP"; allele=\$5 } else { vargroup=\$5; allele=\$6 };
+                       print \$1, \$2, allele, \$2, \$3, \$4, vargroup, "${varset}", "${real_or_simulated}", "${var_type}" }' varset.tsv
         } > varset_for_analysis.combine
 
     """

@@ -7,8 +7,7 @@ params.picard_path = "/opt/conda/share/picard-2.22.3-0/picard.jar"
 process bamsurgeon_spike_snps {
 
     publishDir "${params.output}/bam", mode: 'copy', pattern: "*bam*"
-    publishDir "${params.output}/truth", mode: 'copy', pattern: "*bam*"
-
+    publishDir "${params.output}/truth", mode: 'copy', pattern: "*vcf*"
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
@@ -25,8 +24,10 @@ process bamsurgeon_spike_snps {
               path("in.bam.bai")
 
     output:
-        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"),  path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
-        path("${varset}_${var_type}_${real_or_simulated}.truth.vcf")
+        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"), \
+              path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
+        tuple path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi")
 
     """
     addsnv.py \\
@@ -44,10 +45,13 @@ process bamsurgeon_spike_snps {
         --picardjar ${params.picard_path} \
         --outbam out.bam
 
-    # mv / rename files
-    mv out.addsnv.varfile.vcf ${varset}_${var_type}_${real_or_simulated}.truth.vcf
+    # Fix up the truth set
+    bcftools reheader --fai ${params.reference}.fai out.addsnv.varfile.vcf | \\
+    bcftools sort -O z > ${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz
+    bcftools index ${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz
+
     samtools sort --threads ${task.cpus} -O BAM out.bam > ${varset}_${var_type}_${real_or_simulated}.bam
-    samtools index  --threads ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
+    samtools index -@ ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
 
     # Check that bam aligned properly
     samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
@@ -58,7 +62,8 @@ process bamsurgeon_spike_snps {
 
 process bamsurgeon_spike_indels {
 
-
+    publishDir "${params.output}/bam", mode: 'copy', pattern: "*bam*"
+    publishDir "${params.output}/truth", mode: 'copy', pattern: "*vcf*"
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
     
@@ -75,8 +80,10 @@ process bamsurgeon_spike_indels {
               path("in.bam.bai")
 
     output:
-        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"),  path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
-        path("${varset}_${var_type}_${real_or_simulated}.truth.vcf")
+        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"), \
+              path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
+        tuple path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi")
 
     """
     addindel.py \\
@@ -94,10 +101,13 @@ process bamsurgeon_spike_indels {
         --picardjar ${params.picard_path} \
         --outbam out.bam
 
-    # mv / rename files
-    mv out.addindel.varfile.vcf ${varset}_${var_type}_${real_or_simulated}.truth.vcf
+    # Fix up the truth set
+    bcftools reheader --fai ${params.reference}.fai out.addindel.varfile.vcf | \\
+    bcftools sort -O z > ${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz
+    bcftools index ${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz
+
     samtools sort --threads ${task.cpus} -O BAM out.bam > ${varset}_${var_type}_${real_or_simulated}.bam
-    samtools index --threads ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
+    samtools index -@ ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
     
     # Check that bam aligned properly
     samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
