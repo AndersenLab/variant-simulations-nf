@@ -134,8 +134,12 @@ process process_varset {
 
     """
         sort -k 1,1 -k 2,2n varset.tsv | \\
-        tr ' ' '\t' | \\
-        awk -v OFS='\t' '{ print \$0, "${varset}", "${real_or_simulated}", "${var_type}" }' > ${varset}_${var_type}_${real_or_simulated}.tsv
+        tr ' ' '\t' > varset.in.tsv
+        if [[ "${var_type}" == "snps" ]]; then
+            cut -f 1-5 -d '\t' varset.in.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
+        elif [[ "${var_type}" == "indels" ]]; then
+            cut -f 1-6 -d '\t' varset.in.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
+        fi;
 
         # Add a header to varset for downstream analysis
         {
