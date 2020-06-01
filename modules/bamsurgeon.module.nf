@@ -2,6 +2,8 @@
     Bamsurgeon spike-ins
 */
 
+params.picard_path = "/opt/conda/share/picard-2.22.3-0/picard.jar"
+
 process bamsurgeon_spike_snps {
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
@@ -29,11 +31,17 @@ process bamsurgeon_spike_snps {
         --procs ${task.cpus} \\
         --maxdepth 2000 \\
         --mindepth 1 \\
+        --tagreads \\
+        --force \\
         -m 1.0 \\
         --bamfile in.bam \\
         --aligner mem \
-        --picardjar /usr/local/bin/picard.jar \
+        --picardjar ${params.picard_path} \
         --outbam ${varset}_${var_type}_${real_or_simulated}.bam
+
+    makevcf.py
+
+        samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
     """
 
 }
@@ -66,11 +74,16 @@ process bamsurgeon_spike_indels {
         --procs ${task.cpus} \\
         --maxdepth 2000 \\
         --mindepth 1 \\
+        --tagreads \\
+        --force \\
         -m 1.0 \\
         --bamfile in.bam \\
         --aligner mem \
-        --picardjar /usr/local/bin/picard.jar \
+        --picardjar ${params.picard_path} \
         --outbam ${varset}_${var_type}_${real_or_simulated}.bam
+        
+        # Check that bam aligned properly
+        samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
     """
 
 }

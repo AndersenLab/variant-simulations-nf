@@ -5,7 +5,7 @@
 
 # Use miniconda parent image - debian based
 FROM continuumio/miniconda:4.7.10
-LABEL maintainer="Erik Waskiewicz"
+LABEL maintainer="Daniel E. Cook"
 
 # Set the working directory & copy across current directory
 # Set python so that it doesn't create .pyc files
@@ -45,6 +45,7 @@ RUN conda install --yes --freeze-installed \
 # Download and setup BAMSurgeon - change to last commit before it was
 # switched to Python3
 RUN git clone https://github.com/adamewing/bamsurgeon.git \
- && cd bamsurgeon \
- && git checkout 198986f4627509a163a42c7320c703edaac15d40 \
- && python setup.py install
+    && cd bamsurgeon \
+    && git checkout 314df8fcfe22dbc728ddc1e88ef56a4babbad022 \
+    && python setup.py install
+

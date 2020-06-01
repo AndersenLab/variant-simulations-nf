@@ -38,7 +38,12 @@ rsync -rauL --progress --copy-links "quest:/projects/b1059/data/genomes/${REFERE
 
 msg "Downloading N2 Reference"
 N2_BAM="${BAM_DIR}/N2.bam"
+N2_05_BAM="${BAM_DIR}/N2.s05.bam"
 [ ! -s "$N2_BAM" ]; wget -O "${N2_BAM}" "https://s3.us-east-2.amazonaws.com/elegansvariation.org/bam/strain/N2.bam"
+
+# Subsample N2 bam for testing
+[ ! -s "${N2_05_BAM}" ]; samtools view -s 0.05 -b "${N2_BAM}" > "${N2_05_BAM}" && samtools index "${N2_05_BAM}"
+
 
 msg "Download recent WI release"
 WI_FNAME="WI.20180527.soft-filter.vcf.gz"
