@@ -6,6 +6,10 @@ params.picard_path = "/opt/conda/share/picard-2.22.3-0/picard.jar"
 
 process bamsurgeon_spike_snps {
 
+    publishDir "${params.output}/bam", mode: 'copy', pattern: "*bam*"
+    publishDir "${params.output}/truth", mode: 'copy', pattern: "*bam*"
+
+
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
     container "andersenlab/bamsurgeon"
@@ -20,8 +24,9 @@ process bamsurgeon_spike_snps {
               path("in.bam"), \
               path("in.bam.bai")
 
-    // output:
-    //     path("${varset_n}.bam")
+    output:
+        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"),  path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
+        path("${varset}_${var_type}_${real_or_simulated}.truth.vcf")
 
     """
     addsnv.py \\
@@ -37,17 +42,23 @@ process bamsurgeon_spike_snps {
         --bamfile in.bam \\
         --aligner mem \
         --picardjar ${params.picard_path} \
-        --outbam ${varset}_${var_type}_${real_or_simulated}.bam
+        --outbam out.bam
 
-    makevcf.py
+    # mv / rename files
+    mv out.addsnv.varfile.vcf ${varset}_${var_type}_${real_or_simulated}.truth.vcf
+    samtools sort --threads ${task.cpus} -O BAM out.bam > ${varset}_${var_type}_${real_or_simulated}.bam
+    samtools index  --threads ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
 
-        samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
+    # Check that bam aligned properly
+    samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
     """
 
 }
 
 
 process bamsurgeon_spike_indels {
+
+
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
     
@@ -63,8 +74,9 @@ process bamsurgeon_spike_indels {
               path("in.bam"), \
               path("in.bam.bai")
 
-    // output:
-    //     path("${varset_n}.bam")
+    output:
+        tuple path("${varset}_${var_type}_${real_or_simulated}.bam"),  path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
+        path("${varset}_${var_type}_${real_or_simulated}.truth.vcf")
 
     """
     addindel.py \\
@@ -80,10 +92,16 @@ process bamsurgeon_spike_indels {
         --bamfile in.bam \\
         --aligner mem \
         --picardjar ${params.picard_path} \
-        --outbam ${varset}_${var_type}_${real_or_simulated}.bam
-        
-        # Check that bam aligned properly
-        samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
+        --outbam out.bam
+
+    # mv / rename files
+    mv out.addindel.varfile.vcf ${varset}_${var_type}_${real_or_simulated}.truth.vcf
+    samtools sort --threads ${task.cpus} -O BAM out.bam > ${varset}_${var_type}_${real_or_simulated}.bam
+    samtools index --threads ${task.cpus} ${varset}_${var_type}_${real_or_simulated}.bam
+    
+    # Check that bam aligned properly
+    samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
+    samtools index ${varset}_${var_type}_${real_or_simulated}.bam
     """
 
 }

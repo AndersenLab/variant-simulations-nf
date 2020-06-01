@@ -7,6 +7,7 @@
 nextflow.preview.dsl=2
 
 assert System.getenv("NXF_VER") == "20.04.1"
+assert params.n_variants % 2 == 0 // must spike an even number of variants
 
 // Params
 params.output = "output"
