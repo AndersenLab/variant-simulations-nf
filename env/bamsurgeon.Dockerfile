@@ -26,7 +26,7 @@ RUN apt-get update \
 # Update conda, make the conda environment, clean unnecessary files
 # afterwards
 RUN conda install --yes --freeze-installed \
-        python=2.7 \
+        python=3.6 \
         bioconda::bcftools \
         bioconda::bwa \
         bioconda::exonerate \
