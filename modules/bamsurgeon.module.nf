@@ -122,14 +122,14 @@ process bamsurgeon_spike_indels {
 
 }
 
-process combine_truth_sets {
+process process_truth_sets {
 
     input:
         tuple val(real_or_simulated), \
-            val(var_type), \
-            val(varset), \
-            path("truth.vcf.gz"), \
-            path("truth.vcf.gz.csi"), emit: 'truth_vcf'
+              val(var_type), \
+              val(varset), \
+              path("truth.vcf.gz"), \
+              path("truth.vcf.gz.csi")
 
     output:
         path("truth_set.tsv")
@@ -138,9 +138,9 @@ process combine_truth_sets {
     '''
         {
             echo -e "CHROM\tPOS\tREF\tALT\treal_or_simulated\tvar_type\tvarset";
-            bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\n'  truth.vcf.gz | \
-            awk '{ print $0, "!{real_or_simulated}", "!{var_type}", "!{varset}" }
-        } | truth_set.tsv
+            bcftools query -f '%CHROM\\t%POS\\t%REF\\t%ALT\\n'  truth.vcf.gz | \\
+            awk -v OFS="\\t" '{ print $0, "!{real_or_simulated}", "!{var_type}", "!{varset}" }'
+        } > truth_set.tsv
     '''
 
 }

@@ -35,7 +35,7 @@ include { gen_varset_real;
           resample_varset; } from './modules/varsets.module.nf'
 include { bamsurgeon_spike_snps;
           bamsurgeon_spike_indels; 
-          combine_truth_sets; } from './modules/bamsurgeon.module.nf'
+          process_truth_sets; } from './modules/bamsurgeon.module.nf'
 
 workflow {
 
@@ -51,17 +51,17 @@ workflow {
            }.set { varsets_in }
     
     // generate real vs simulated test sets
-    varsets_in.real.view() | gen_varset_real
+    varsets_in.real | gen_varset_real
     varsets_in.simulated | gen_varset_simulated
 
     // Group by generation type and variant type and shuffle
     gen_varset_real.out.to_mix_varset
-                   .mix(gen_varset_simulated.out.to_mix_varset).groupTuple(by: [0,1]).view() | mix_varsets
+                   .concat(gen_varset_simulated.out.to_mix_varset).groupTuple(by: [0,1]) | mix_varsets
 
     // Resample variants
     gen_varset_real.out.to_resample_varset
-                   .mix(gen_varset_simulated.out.to_resample_varset)
-                   .join(mix_varsets.out, by: [0,1]) | resample_varset | process_varset
+                   .concat(gen_varset_simulated.out.to_resample_varset)
+                   .combine(mix_varsets.out, by: [0,1]).view() | resample_varset | process_varset
 
     // Branch snps and indels to bamsurgeon
     process_varset.out.to_bamsurgeon
@@ -82,8 +82,9 @@ workflow {
 
     // Combine Truth Sets
     bamsurgeon_spike_snps.out.truth_vcf
-                         .mix(bamsurgeon_spike_indels.out.truth_vcf).view()
-                         .collectFile(name: "${params.output}/truth_summary.tsv",
+                         .concat(bamsurgeon_spike_indels.out.truth_vcf) | process_truth_sets
+                         
+    process_truth_sets.out.collectFile(name: "${params.output}/truth_summary.tsv",
                                       keepHeader: true,
                                       skip: 1)
 

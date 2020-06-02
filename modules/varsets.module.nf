@@ -45,8 +45,6 @@ process gen_varset_real {
               val(var_type), \
               val(varset), \
               path("out.tsv"), emit: "to_resample_varset"
-        tuple path("${varset}_${var_type}.vcf.gz"), \
-              path("${varset}_${var_type}.vcf.gz.csi")
 
     """
             # Generate simulated variant set
@@ -115,7 +113,7 @@ process gen_varset_simulated {
                 # Deletions
                 sc rand -n ${params.n_variants/2} --dist=2-30 ${params.reference} | \
                 awk '{ print \$1, \$2, \$2 + length(\$4), "1.0", "DEL", \$4; }';
-            } | sort -k 1,1 -k 2,2n - > out.tsv
+            } > out.tsv
         fi;
     """
 }
@@ -171,8 +169,9 @@ process resample_varset {
     """
         {
             head -n ${n_resample} shuffle_set.tsv;
-            cat varset.in.tsv;
-        } | sort -k 1,1 -k 2,2n  | uniq > varset.tsv
+            shuf varset.in.tsv;
+        } | head -n ${params.n_variants} | \\
+            sort -u -k 1,1 -k 2,2n | tr ' ' '\t' > varset.tsv
     """
 
 }
@@ -197,12 +196,10 @@ process process_varset {
         path "varset_for_analysis.combine", emit: "to_combine"
 
     """
-        sort -k 1,1 -k 2,2n varset.tsv | \\
-        tr ' ' '\t' > varset.in.tsv
         if [[ "${var_type}" == "snps" ]]; then
-            cut -f 1-5 -d '\t' varset.in.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
+            cut -f 1-5 -d '\t' varset.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
         elif [[ "${var_type}" == "indels" ]]; then
-            cut -f 1-6 -d '\t' varset.in.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
+            cut -f 1-6 -d '\t' varset.tsv > ${varset}_${var_type}_${real_or_simulated}.tsv
         fi;
 
         # Add a header to varset for downstream analysis
