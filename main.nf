@@ -28,39 +28,48 @@ def log_summary() {
 
 log_summary()
 
-include { bamsurgeon_spike_snps;
-          bamsurgeon_spike_indels; } from './modules/bamsurgeon.module.nf'
 include { gen_varset_real;
           gen_varset_simulated;
-          process_varset; } from './modules/varsets.module.nf'
+          process_varset; 
+          mix_varsets;
+          resample_varset; } from './modules/varsets.module.nf'
+include { bamsurgeon_spike_snps;
+          bamsurgeon_spike_indels; 
+          combine_truth_sets; } from './modules/bamsurgeon.module.nf'
 
 workflow {
 
-    varsets = Channel.from(1..params.n_varsets)
+    real_or_simulated = Channel.from(["real", "simulated"])
 
     // branch real vs. simulated
-    varsets.combine(["real", "simulated"])
-           .combine(["snps", "indels"])
-           .combine([bam_file])
-           .branch {
-               real: it[1] == "real"
-               simulated: it[1] == "simulated"
+    real_or_simulated.combine(["snps", "indels"])
+                     .combine(1..params.n_varsets)
+                     .combine([bam_file])
+                     .branch {
+               real: it[0] == "real"
+               simulated: it[0] == "simulated"
            }.set { varsets_in }
     
     // generate real vs simulated test sets
-    varsets_in.real | gen_varset_real
+    varsets_in.real.view() | gen_varset_real
     varsets_in.simulated | gen_varset_simulated
 
-    gen_varset_real.out.to_process_varset
-                   .mix(gen_varset_simulated.out) | process_varset
+    // Group by generation type and variant type and shuffle
+    gen_varset_real.out.to_mix_varset
+                   .mix(gen_varset_simulated.out.to_mix_varset).groupTuple(by: [0,1]).view() | mix_varsets
+
+    // Resample variants
+    gen_varset_real.out.to_resample_varset
+                   .mix(gen_varset_simulated.out.to_resample_varset)
+                   .join(mix_varsets.out, by: [0,1]) | resample_varset | process_varset
 
     // Branch snps and indels to bamsurgeon
     process_varset.out.to_bamsurgeon
                   .combine([file(params.bam_file, checkIfExists: true)])
                   .combine([file(params.bam_file + ".bai", checkIfExists: true)])
                   .branch {
-        snps: it[2] == "snps"
-        indels: it[2] == "indels"
+        snps: it[1] == "snps"
+        indels: it[1] == "indels"
     }.set { bamsurgeon_in }
 
     bamsurgeon_in.snps | bamsurgeon_spike_snps
@@ -68,7 +77,14 @@ workflow {
 
     // Combine variant datasets for evaluation
     process_varset.out.to_combine.collectFile(name: "${params.output}/varset_summary.tsv",
-                                             keepHeader: true,
-                                             skip: 1)
+                                              keepHeader: true,
+                                              skip: 1)
+
+    // Combine Truth Sets
+    bamsurgeon_spike_snps.out.truth_vcf
+                         .mix(bamsurgeon_spike_indels.out.truth_vcf).view()
+                         .collectFile(name: "${params.output}/truth_summary.tsv",
+                                      keepHeader: true,
+                                      skip: 1)
 
 }

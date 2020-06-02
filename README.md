@@ -6,7 +6,11 @@ This nextflow pipeline generates a set of bams using bamsurgeon from which varia
 
 The following steps are performed.
 
-* __real__ variants are samples from a given VCF (`params.vcf_file`) and spiked into a test bam (`params.bam_file`).
+* __real__ variants are samples from a given VCF (`params.vcf_file`) and spiked into a test bam (`params.bam_file`) (Both SNP and INDEL).
+* __simulated__ simulated variants are generated from a FASTA (Both SNP and INDEL).
+* __resample__ - To create joint variants, all variants are combined and shuffled from __real__ and __simulated__.
+                 A random number is chosen from the top of the resampled set to replace
+                 variants in the existing set.
 
 
 ![overview](img/overview.drawio.svg)
@@ -24,10 +28,10 @@ __Comparison Tools__
 
 * [ ] https://github.com/Illumina/hap.py
 * [ ] https://github.com/dancooke/starfish
+* [ ] https://github.com/vcflib/vcflib
+* [ ] https://github.com/vcftools/vcftools
 
-* https://github.com/vcflib/vcflib
-* https://github.com/vcftools/vcftools
-
+## History
 
 The original variant simulations were run here:
 

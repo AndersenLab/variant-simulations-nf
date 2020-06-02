@@ -1,6 +1,8 @@
 /*
     Varset generation and processing
 */
+import java.lang.Math;
+import java.util.Random;
 
 /*
     Varsets are output as:
@@ -30,16 +32,19 @@ process gen_varset_real {
     publishDir "${params.output}/varsets/vcf", mode: 'copy', pattern: "*vcf*"
 
     input:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
+              val(varset), \
               path(bam)
 
     output:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
-              path("out.tsv"), emit: "to_process_varset"
+              path("out.tsv"), emit: "to_mix_varset"
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("out.tsv"), emit: "to_resample_varset"
         tuple path("${varset}_${var_type}.vcf.gz"), \
               path("${varset}_${var_type}.vcf.gz.csi")
 
@@ -78,16 +83,19 @@ process gen_varset_simulated {
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
     input:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
+              val(varset), \
               path(bam)
 
     output:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
-              path("out.tsv")
+              path("out.tsv"), emit: "to_mix_varset"
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("out.tsv"), emit: "to_resample_varset"
 
     """
         if [[ "${var_type}" == "snps" ]]; then
@@ -113,6 +121,62 @@ process gen_varset_simulated {
 }
 
 
+process mix_varsets {
+    /*
+        Combines and mixes variants so joint variants can be added
+        to varsets
+    */
+
+    tag { "${real_or_simulated}+${var_type}"}
+
+    input:
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              path("*.tsv")
+    
+    output:
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              path("shuffle_set.tsv")
+        
+    """
+        cat *.tsv | shuf > shuffle_set.tsv
+    """
+    
+}
+
+process resample_varset {
+    /*
+        Reshuffle varsets taking a random number of variants
+        from the top of the shuffle set; Then sort and unique and use
+        unique variants from main set.
+    */
+
+    input:
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("varset.in.tsv"), \
+              path("shuffle_set.tsv")
+
+    output:
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("varset.tsv")
+
+    script:
+        // Resample random int of variants
+        n_resample = Math.abs(new Random().nextInt() % params.n_variants) + 1
+    """
+        {
+            head -n ${n_resample} shuffle_set.tsv;
+            cat varset.in.tsv;
+        } | sort -k 1,1 -k 2,2n  | uniq > varset.tsv
+    """
+
+}
+
 process process_varset {
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
@@ -120,15 +184,15 @@ process process_varset {
     publishDir "${params.output}/varsets", mode: 'copy', pattern: "*.tsv"
 
     input:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
+              val(varset), \
               path("varset.tsv")
 
     output:
-        tuple val(varset), \
-              val(real_or_simulated), \
-              val(var_type), 
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
               path("${varset}_${var_type}_${real_or_simulated}.tsv"), emit: "to_bamsurgeon"
         path "varset_for_analysis.combine", emit: "to_combine"
 

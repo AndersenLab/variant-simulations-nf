@@ -16,9 +16,9 @@ process bamsurgeon_spike_snps {
     label 'md'
 
     input:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
+              val(varset), \
               path("varfile.tsv"), \
               path("in.bam"), \
               path("in.bam.bai")
@@ -26,8 +26,11 @@ process bamsurgeon_spike_snps {
     output:
         tuple path("${varset}_${var_type}_${real_or_simulated}.bam"), \
               path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
-        tuple path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
-              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi")
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi"), emit: 'truth_vcf'
 
     """
     addsnv.py \\
@@ -72,9 +75,9 @@ process bamsurgeon_spike_indels {
     label 'md'
 
     input:
-        tuple val(varset), \
-              val(real_or_simulated), \
+        tuple val(real_or_simulated), \
               val(var_type), \
+              val(varset), \
               path("varfile.tsv"), \
               path("in.bam"), \
               path("in.bam.bai")
@@ -82,8 +85,11 @@ process bamsurgeon_spike_indels {
     output:
         tuple path("${varset}_${var_type}_${real_or_simulated}.bam"), \
               path("${varset}_${var_type}_${real_or_simulated}.bam.bai")
-        tuple path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
-              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi")
+        tuple val(real_or_simulated), \
+              val(var_type), \
+              val(varset), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz"), \
+              path("${varset}_${var_type}_${real_or_simulated}.truth.vcf.gz.csi"), emit: 'truth_vcf'
 
     """
     addindel.py \\
@@ -113,5 +119,28 @@ process bamsurgeon_spike_indels {
     samtools quickcheck ${varset}_${var_type}_${real_or_simulated}.bam
     samtools index ${varset}_${var_type}_${real_or_simulated}.bam
     """
+
+}
+
+process combine_truth_sets {
+
+    input:
+        tuple val(real_or_simulated), \
+            val(var_type), \
+            val(varset), \
+            path("truth.vcf.gz"), \
+            path("truth.vcf.gz.csi"), emit: 'truth_vcf'
+
+    output:
+        path("truth_set.tsv")
+
+    shell:
+    '''
+        {
+            echo -e "CHROM\tPOS\tREF\tALT\treal_or_simulated\tvar_type\tvarset";
+            bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\n'  truth.vcf.gz | \
+            awk '{ print $0, "!{real_or_simulated}", "!{var_type}", "!{varset}" }
+        } | truth_set.tsv
+    '''
 
 }
