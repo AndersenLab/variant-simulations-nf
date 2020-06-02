@@ -9,6 +9,8 @@ The following steps are performed.
 * __real__ variants are samples from a given VCF (`params.vcf_file`) and spiked into a test bam (`params.bam_file`).
 
 
+![overview](img/overview.drawio.svg)
+
 
 ## Configuration
 
