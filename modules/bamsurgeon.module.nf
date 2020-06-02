@@ -124,6 +124,8 @@ process bamsurgeon_spike_indels {
 
 process process_truth_sets {
 
+    tag { "${varset}:${real_or_simulated}:${var_type}" }
+
     input:
         tuple val(real_or_simulated), \
               val(var_type), \

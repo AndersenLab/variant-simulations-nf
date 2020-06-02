@@ -28,7 +28,8 @@ process gen_varset_real {
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
-    //conda "bedtools=2.29.2 bcftools=1.10 bedops=2.4.39"
+    conda "bedtools=2.29.2 bcftools=1.10 bedops=2.4.39"
+
     publishDir "${params.output}/varsets/vcf", mode: 'copy', pattern: "*vcf*"
 
     input:
@@ -80,6 +81,10 @@ process gen_varset_simulated {
 
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
+    conda "bedtools=2.29.2 bcftools=1.10 bedops=2.4.39"
+
+    label 'xs'
+
     input:
         tuple val(real_or_simulated), \
               val(var_type), \
@@ -127,6 +132,8 @@ process mix_varsets {
 
     tag { "${real_or_simulated}+${var_type}"}
 
+    label 'xs'
+
     input:
         tuple val(real_or_simulated), \
               val(var_type), \
@@ -149,6 +156,8 @@ process resample_varset {
         from the top of the shuffle set; Then sort and unique and use
         unique variants from main set.
     */
+
+    label 'xs'
 
     input:
         tuple val(real_or_simulated), \
@@ -181,6 +190,8 @@ process process_varset {
     tag { "${varset}:${real_or_simulated}:${var_type}" }
 
     publishDir "${params.output}/varsets", mode: 'copy', pattern: "*.tsv"
+
+    label 'xs'
 
     input:
         tuple val(real_or_simulated), \
