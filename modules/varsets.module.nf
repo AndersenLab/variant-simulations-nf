@@ -30,6 +30,8 @@ process gen_varset_real {
 
     conda "bedtools=2.29.2 bcftools=1.10 bedops=2.4.39"
 
+    label 'xs'
+
     publishDir "${params.output}/varsets/vcf", mode: 'copy', pattern: "*vcf*"
 
     input:

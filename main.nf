@@ -61,7 +61,7 @@ workflow {
     // Resample variants
     gen_varset_real.out.to_resample_varset
                    .concat(gen_varset_simulated.out.to_resample_varset)
-                   .combine(mix_varsets.out, by: [0,1]).view() | resample_varset | process_varset
+                   .combine(mix_varsets.out, by: [0,1]) | resample_varset | process_varset
 
     // Branch snps and indels to bamsurgeon
     process_varset.out.to_bamsurgeon
