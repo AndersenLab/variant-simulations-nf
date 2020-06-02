@@ -47,7 +47,7 @@ The following options can be configured:
 
 ## hap.py comparison
 
-```
+```bash
 docker run -it -v "${HOME}/.genome":/.genome \
                -v "${PWD}:${PWD}" \
                -w ${PWD} pkrusche/hap.py /opt/hap.py/bin/hap.py \
