@@ -46,6 +46,6 @@ RUN conda install --yes --freeze-installed \
 # switched to Python3
 RUN git clone https://github.com/adamewing/bamsurgeon.git \
     && cd bamsurgeon \
-    && git checkout 314df8fcfe22dbc728ddc1e88ef56a4babbad022 \
+    && git checkout 20d431ebf5b0101ea2327b84cd520e3faebb4be4 \
     && python setup.py install
 
